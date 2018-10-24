@@ -177,7 +177,7 @@ def handleWayBillReceipt(tree):
     returnInfo = getTextByTag(tree, "returnInfo")
     sql = '''
     select sbill_no, sreturn_status, sreturn_time, sreturn_info
-    from t_waybill_head where sorder_no = '%s'
+    from t_waybill_head where sbill_no = '%s'
     ''' % (billNo)
     print("开始执行：%s" % (sql))
 
@@ -233,6 +233,8 @@ def handleReceipt(root):
         print("不是四单回执暂不处理")
 
 def parseXml(fileName):
+    if not fileName.endswith(".xml"):
+        return
     tree = ET.parse(os.path.join(receiveDir, fileName))
     root = tree.getroot()
     # subtree = root[0]
