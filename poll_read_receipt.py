@@ -169,6 +169,39 @@ def handleInvtReceipt(tree):
                 cursor.execute(sql)
 
 @dbOpenClose
+def handleInvtCancelReceipt(tree):
+    print("开始处理撤销清单回执")
+    invtNo = getTextByTag(tree, "invtNo")
+    returnStatus = getTextByTag(tree, "returnStatus")
+    returnTime = getTextByTag(tree, "returnTime")
+    returnInfo = getTextByTag(tree, "returnInfo")
+    sql = '''
+    select sinvt_no, sreturn_status, sreturn_time, sreturn_info
+    from t_invt_cancel where sinvt_no = '%s'
+    ''' % (invtNo)
+    print("开始执行：%s" % (sql))
+
+    cursor.execute(sql)
+    result = cursor.fetchone()
+
+    print(result)
+    if not result is None:
+        sql = '''
+        update t_invt_cancel set sreturn_status = '%s',
+        sstatus = '%s',
+        sreturn_time = '%s',
+        sreturn_info = '%s'
+        where sinvt_no = '%s'
+        ''' % (returnStatus, returnStatus, returnTime, returnInfo, invtNo)
+        if result[2] is None:
+            print("开始执行：%s" % (sql))
+            cursor.execute(sql)
+        else:
+            if op.lt(result[2], returnTime):
+                print("开始执行：%s" % (sql))
+                cursor.execute(sql)
+
+@dbOpenClose
 def handleWayBillReceipt(tree):
     print("开始处理清单总分单回执")
     billNo = getTextByTag(tree, "billNo")
@@ -229,6 +262,8 @@ def handleReceipt(root):
         handle900Receipt(root[0])
     elif root.tag.endswith("CEB608Message"):
         handleWayBillReceipt(root[0])
+    elif root.tag.endswith("CEB606Message"):
+        handleInvtCancelReceipt(root[0])
     else:
         print("不是四单回执暂不处理")
 
