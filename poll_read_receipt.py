@@ -44,7 +44,7 @@ def handleOrderReceipt(tree):
     returnTime = getTextByTag(tree, "returnTime")
     returnInfo = getTextByTag(tree, "returnInfo")
     sql = '''
-    select sorder_no sreturn_status, sreturn_time, sreturn_info
+    select sorder_no, sreturn_status, sreturn_time, sreturn_info
     from t_order_head where sorder_no = '%s'
     ''' % (orderNo)
     print("开始执行：%s" % (sql))
@@ -77,7 +77,7 @@ def handleLogisticsReceipt(tree):
     returnTime = getTextByTag(tree, "returnTime")
     returnInfo = getTextByTag(tree, "returnInfo")
     sql = '''
-    select slogistics_no sreturn_status, sreturn_time, sreturn_info
+    select slogistics_no, sreturn_status, sreturn_time, sreturn_info
     from t_logistics where slogistics_no = '%s'
     ''' % (logisticsNo)
     print("开始执行：%s" % (sql))
@@ -110,7 +110,7 @@ def handlePaymentReceipt(tree):
     returnTime = getTextByTag(tree, "returnTime")
     returnInfo = getTextByTag(tree, "returnInfo")
     sql = '''
-    select sorder_no sreturn_status, sreturn_time, sreturn_info
+    select sorder_no, sreturn_status, sreturn_time, sreturn_info
     from t_payment where sorder_no = '%s'
     ''' % (orderNo)
     print("开始执行：%s" % (sql))
