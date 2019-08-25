@@ -1,4 +1,4 @@
-import uuid, sys, time, codecs, os, shutil, sched, pymysql, traceback, datetime
+import uuid, time, os, shutil, sched, pymysql, traceback, datetime
 import xml.etree.cElementTree as ET
 import operator as op
 
@@ -20,7 +20,7 @@ def dbOpenClose(func):
         try:
             output = func(*args, **kw)
             db.commit()
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
             db.rollback()
         finally:
@@ -202,7 +202,7 @@ def handleInvtCancelReceipt(tree):
                 cursor.execute(sql)
 
 @dbOpenClose
-def handleWayBillReceipt(tree):
+def handleDepartureReceipt(tree):
     print("开始处理清单总分单回执")
     billNo = getTextByTag(tree, "billNo")
     returnStatus = getTextByTag(tree, "returnStatus")
@@ -234,10 +234,42 @@ def handleWayBillReceipt(tree):
                 print("开始执行：%s" % (sql))
                 cursor.execute(sql)
 
+@dbOpenClose
+def handleWayBillReceipt(tree):
+    print("开始离境单回执")
+    billNo = getTextByTag(tree, "billNo")
+    returnStatus = getTextByTag(tree, "returnStatus")
+    returnTime = getTextByTag(tree, "returnTime")
+    returnInfo = getTextByTag(tree, "returnInfo")
+    sql = '''
+    select sbill_no, sreturn_status, sreturn_time, sreturn_info
+    from t_departure_head where sbill_no = '%s'
+    ''' % (billNo)
+    print("开始执行：%s" % (sql))
+
+    cursor.execute(sql)
+    result = cursor.fetchone()
+
+    print(result)
+    if not result is None:
+        sql = '''
+        update t_departure_head set sreturn_status = '%s',
+        sstatus = '%s',
+        sreturn_time = '%s',
+        sreturn_info = '%s'
+        where sbill_no = '%s'
+        ''' % (returnStatus, returnStatus, returnTime, returnInfo, billNo)
+        if result[2] is None:
+            print("开始执行：%s" % (sql))
+            cursor.execute(sql)
+        else:
+            if op.lt(result[2], returnTime):
+                print("开始执行：%s" % (sql))
+                cursor.execute(sql)
+
 def handle900Receipt(tree):
     print("开始处理xsd校验失败回执")
     messageType = getTextByTag(tree, "guid")
-    returnStatus = getTextByTag(tree, "returnStatus")
     returnTime = getTextByTag(tree, "returnTime")
     returnInfo = getTextByTag(tree, "returnInfo")
     errLog = "err_%s.log" % (time.strftime("%Y%m%d"))
@@ -264,6 +296,8 @@ def handleReceipt(root):
         handleWayBillReceipt(root[0])
     elif root.tag.endswith("CEB606Message"):
         handleInvtCancelReceipt(root[0])
+    elif root.tag.endswith("CEB510Message"):
+        handleDepartureReceipt(root[0])
     else:
         print("不是四单回执暂不处理")
 
