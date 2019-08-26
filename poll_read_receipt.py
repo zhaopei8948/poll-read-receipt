@@ -202,7 +202,7 @@ def handleInvtCancelReceipt(tree):
                 cursor.execute(sql)
 
 @dbOpenClose
-def handleDepartureReceipt(tree):
+def handleWayBillReceipt(tree):
     print("开始处理清单总分单回执")
     billNo = getTextByTag(tree, "billNo")
     returnStatus = getTextByTag(tree, "returnStatus")
@@ -235,7 +235,7 @@ def handleDepartureReceipt(tree):
                 cursor.execute(sql)
 
 @dbOpenClose
-def handleWayBillReceipt(tree):
+def handleDepartureReceipt(tree):
     print("开始离境单回执")
     billNo = getTextByTag(tree, "billNo")
     returnStatus = getTextByTag(tree, "returnStatus")
