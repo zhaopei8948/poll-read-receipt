@@ -237,14 +237,14 @@ def handleWayBillReceipt(tree):
 @dbOpenClose
 def handleDepartureReceipt(tree):
     print("开始离境单回执")
-    billNo = getTextByTag(tree, "billNo")
+    copNo = getTextByTag(tree, "copNo")
     returnStatus = getTextByTag(tree, "returnStatus")
     returnTime = getTextByTag(tree, "returnTime")
     returnInfo = getTextByTag(tree, "returnInfo")
     sql = '''
     select sbill_no, sreturn_status, sreturn_time, sreturn_info
-    from t_departure_head where sbill_no = '%s'
-    ''' % (billNo)
+    from t_departure_head where scop_no = '%s'
+    ''' % (copNo)
     print("开始执行：%s" % (sql))
 
     cursor.execute(sql)
@@ -257,8 +257,8 @@ def handleDepartureReceipt(tree):
         sstatus = '%s',
         sreturn_time = '%s',
         sreturn_info = '%s'
-        where sbill_no = '%s'
-        ''' % (returnStatus, returnStatus, returnTime, returnInfo, billNo)
+        where scop_no = '%s'
+        ''' % (returnStatus, returnStatus, returnTime, returnInfo, copNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
             cursor.execute(sql)
