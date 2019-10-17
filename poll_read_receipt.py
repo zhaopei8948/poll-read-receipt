@@ -304,19 +304,19 @@ def handleReceipt(root):
 def parseXml(fileName):
     if not fileName.endswith(".xml"):
         return
-    tree = ET.parse(os.path.join(receiveDir, fileName))
-    root = tree.getroot()
-    # subtree = root[0]
-    # handleInvtReceipt(subtree)
-    handleReceipt(root)
-    todayDir = time.strftime("%Y%m%d")
-    if not os.path.exists(os.path.join(receiveBackDir, todayDir)):
-        os.makedirs(os.path.join(receiveBackDir, todayDir))
+    try:
+        tree = ET.parse(os.path.join(receiveDir, fileName))
+        root = tree.getroot()
+        handleReceipt(root)
+        todayDir = time.strftime("%Y%m%d")
+        if not os.path.exists(os.path.join(receiveBackDir, todayDir)):
+            os.makedirs(os.path.join(receiveBackDir, todayDir))
 
-    shutil.copyfile(os.path.join(receiveDir, fileName), os.path.join(receiveBackDir, todayDir,
-                                                                     '%s_%s.xml' % (time.strftime("%Y%m%d%H%M%S"), uuid.uuid1())))
-    os.remove(os.path.join(receiveDir, fileName))
-
+        shutil.copyfile(os.path.join(receiveDir, fileName), os.path.join(receiveBackDir, todayDir,
+                                                                        '%s_%s.xml' % (time.strftime("%Y%m%d%H%M%S"), uuid.uuid1())))
+        os.remove(os.path.join(receiveDir, fileName))
+    except Exception:
+        traceback.print_exc()
 
 def worker():
     print("worker time is : [%s]" % (time.strftime("%Y-%m-%d %H:%M:%S")))
