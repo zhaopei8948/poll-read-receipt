@@ -267,6 +267,39 @@ def handleDepartureReceipt(tree):
                 print("开始执行：%s" % (sql))
                 cursor.execute(sql)
 
+@dbOpenClose
+def handleSummaryReceipt(tree):
+    print("开始处理汇总单回执")
+    copNo = getTextByTag(tree, "copNo")
+    returnStatus = getTextByTag(tree, "returnStatus")
+    returnTime = getTextByTag(tree, "returnTime")
+    returnInfo = getTextByTag(tree, "returnInfo")
+    sql = '''
+    select sreturn_status, sreturn_time, sreturn_info
+    from t_summary_head where scop_no = '%s'
+    ''' % (copNo)
+    print("开始执行：%s" % (sql))
+
+    cursor.execute(sql)
+    result = cursor.fetchone()
+
+    print(result)
+    if not result is None:
+        sql = '''
+        update t_summary_head set sreturn_status = '%s',
+        sstatus = '%s',
+        sreturn_time = '%s',
+        sreturn_info = '%s'
+        where scop_no = '%s'
+        ''' % (returnStatus, returnStatus, returnTime, returnInfo, copNo)
+        if result[1] is None:
+            print("开始执行：%s" % (sql))
+            cursor.execute(sql)
+        else:
+            if op.lt(result[1], returnTime):
+                print("开始执行：%s" % (sql))
+                cursor.execute(sql)
+
 def handle900Receipt(tree):
     print("开始处理xsd校验失败回执")
     messageType = getTextByTag(tree, "guid")
@@ -298,8 +331,10 @@ def handleReceipt(root):
         handleInvtCancelReceipt(root[0])
     elif root.tag.endswith("CEB510Message"):
         handleDepartureReceipt(root[0])
+    elif root.tag.endswith("CEB702Message"):
+        handleSummaryReceipt(root[0])
     else:
-        print("不是四单回执暂不处理")
+        print("不能识别的回执暂不处理")
 
 def parseXml(fileName):
     if not fileName.endswith(".xml"):
