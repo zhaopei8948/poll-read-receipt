@@ -145,19 +145,16 @@ def handleDecData(tree, content):
     guid = guid[0]
 
     sql = '''
-    update t_dec_head t set t.dec_status = :decStatus, t.last_note = :lastNote, t.last_result_info = :lastResultInfo
-    , t.last_receipt_time = str_to_date(:lastReceiptTime, '%Y%m%d%H%i%s')
-    where t.seq_no = :seqNo
+    update t_dec_head t set t.dec_status = %s, t.last_note = %s, t.last_result_info = %s
+    , t.last_receipt_time = str_to_date(%s, '%Y%m%d%H%i%s')
+    where t.seq_no = %s
     '''
-    cursor.prepare(sql)
     logger.info("execute sql: {}".format(sql))
-    cursor.execute(None, decStatus=channel, lastNote=note, lastResultInfo=resultInfo,
-                   lastReceiptTime=noticeDate, seqNo=seqNo)
+    cursor.execute(sql, [channel, note, resultInfo, noticeDate, seqNo])
 
     sql = 'select guid from t_dec_head where seq_no = :seqNo'
-    cursor.prepare(sql)
     logger.info("execute sql: {}".format(sql))
-    cursor.execute(None, seqNo=seqNo)
+    cursor.execute(sql, [seqNo])
     guid = cursor.fetchone()
     if guid is None:
         logger.error('seqNo {} 不存在，不需要更新数据'.format(seqNo))
@@ -166,15 +163,12 @@ def handleDecData(tree, content):
 
     sql = '''
     insert into t_dec_receipt (guid, dec_guid, channel, note, notice_date, input_time, content)
-    values (:guid, :decGuid, :channel, :note, str_to_date(:noticeDate, '%Y%m%d%H%i%s'),
-    str_to_date(:inputTime, '%Y%m%d%H%i%s'), :content
+    values (%s, %s, %s, %s, str_to_date(%s, '%Y%m%d%H%i%s'),
+    str_to_date(%s, '%Y%m%d%H%i%s'), %s
     )
     '''
-    cursor.prepare(sql)
     logger.info("execute sql: {}".format(sql))
-    cursor.execute(None, guid=uuid.uuid1(), decGuid=guid, channel=channel, note=note,
-                   noticeDate=noticeDate, inputTime=time.strftime("%Y%m%d%H%M%S"),
-                   content=content)
+    cursor.execute(sql, [uuid.uuid1(), guid, channel, note, noticeDate, time.strftime("%Y%m%d%H%M%S"), content])
 
 
 def handleReceipt(root, content):
