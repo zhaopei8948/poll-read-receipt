@@ -1,6 +1,8 @@
 import uuid, time, os, shutil, sched, pymysql, traceback, datetime
 import xml.etree.cElementTree as ET
 import operator as op
+# from concurrent.futures import ThreadPoolExecutor #线程池
+from DBUtils.PooledDB import PooledDB
 
 
 schedule = sched.scheduler(time.time, time.sleep)
@@ -8,13 +10,37 @@ delay = 3
 receiveBackDir = r"/Users/zhaopei/Desktop/5/pdata/2"
 receiveDir = r"/Users/zhaopei/Desktop/5/pdata/1"
 xmlns = "{http://www.chinaport.gov.cn/ceb}"
-host, userName, password, dbs = "localhost", "root", "root", "bills"
+pool = PooledDB(
+creator=pymysql, # 使用链接数据库的模块
+maxconnections=8, # 连接池允许的最大连接数，0和None表示不限制连接数
+mincached=2, # 初始化时，链接池中至少创建的空闲的链接，0表示不创建
+maxcached=5, # 链接池中最多闲置的链接，0和None不限制
+maxshared=0, # 链接池中最多共享的链接数量，0和None表示全部共享。PS: 无用，因为pymysql和MySQLdb等模块的 threadsafety都为1，所有值无论设置为多少，_maxcached永远为0，所以永远是所有链接都共享。
+blocking=True, # 连接池中如果没有可用连接后，是否阻塞等待。True，等待；False，不等待然后报错
+maxusage=None, # 一个链接最多被重复使用的次数，None表示无限制
+setsession=[], # 开始会话前执行的命令列表。如：[“set datestyle to …”, “set time zone …”]
+ping=0,
+# ping MySQL服务端，检查是否服务可用。
+# 如：0 = None = never,
+# 1 = default = whenever it is requested,
+# 2 = when a cursor is created,
+# 4 = when a query is executed,
+# 7 = always
+host='127.0.0.1',
+port=3306,
+user='root',
+password='root',
+database='bills',
+charset='utf8'
+)
+
+# thread_pool = ThreadPoolExecutor(8)
 cursor = None
 
 def dbOpenClose(func):
     def wrapper(*args, **kw):
         global cursor
-        db = pymysql.connect(host, userName, password, dbs);
+        db = pool.connection()
         cursor = db.cursor()
         output = None
         try:
@@ -343,21 +369,23 @@ def parseXml(fileName):
         tree = ET.parse(os.path.join(receiveDir, fileName))
         root = tree.getroot()
         handleReceipt(root)
-        todayDir = time.strftime("%Y%m%d")
-        if not os.path.exists(os.path.join(receiveBackDir, todayDir)):
-            os.makedirs(os.path.join(receiveBackDir, todayDir))
-
-        shutil.copyfile(os.path.join(receiveDir, fileName), os.path.join(receiveBackDir, todayDir,
-                                                                        '%s_%s.xml' % (time.strftime("%Y%m%d%H%M%S"), uuid.uuid1())))
-        os.remove(os.path.join(receiveDir, fileName))
     except Exception:
         traceback.print_exc()
+
+    todayDir = time.strftime("%Y%m%d")
+    if not os.path.exists(os.path.join(receiveBackDir, todayDir)):
+        os.makedirs(os.path.join(receiveBackDir, todayDir))
+
+    shutil.copyfile(os.path.join(receiveDir, fileName), os.path.join(receiveBackDir, todayDir,
+                                                                    '%s_%s.xml' % (time.strftime("%Y%m%d%H%M%S"), uuid.uuid1())))
+    os.remove(os.path.join(receiveDir, fileName))
 
 def worker():
     print("worker time is : [%s]" % (time.strftime("%Y-%m-%d %H:%M:%S")))
     for parent,dirnames,filenames in os.walk(receiveDir):
        for filename in filenames:
            print("filename is: %s" % (os.path.join(parent, filename)))
+           # thread_pool.submit(parseXml, filename)
            parseXml(filename)
     schedule.enter(delay, 0, worker)
 
