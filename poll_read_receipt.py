@@ -1,7 +1,7 @@
 import uuid, time, os, shutil, sched, pymysql, traceback, datetime
 import xml.etree.cElementTree as ET
 import operator as op
-# from concurrent.futures import ThreadPoolExecutor #线程池
+from concurrent.futures import ThreadPoolExecutor #线程池
 from DBUtils.PooledDB import PooledDB
 
 
@@ -34,26 +34,38 @@ database='bills',
 charset='utf8'
 )
 
-# thread_pool = ThreadPoolExecutor(8)
-cursor = None
+thread_pool = ThreadPoolExecutor(4)
 
-def dbOpenClose(func):
-    def wrapper(*args, **kw):
-        global cursor
-        db = pool.connection()
-        cursor = db.cursor()
-        output = None
-        try:
-            output = func(*args, **kw)
-            db.commit()
-        except Exception:
-            traceback.print_exc()
-            db.rollback()
-        finally:
-            cursor.close()
-            db.close()
-        return output
-    return wrapper
+
+def fetchOne(sql, **kw):
+    db = pool.connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(sql, **kw)
+    except Exception:
+        traceback.print_exc()
+        return None
+    return cursor.fetchone()
+
+def fetchAll(sql, **kw):
+    db = pool.connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(sql, **kw)
+    except Exception:
+        traceback.print_exc()
+        return None
+    return cursor.fetchall()
+
+def sqlModify(sql, **kw):
+    db = pool.connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(sql, **kw)
+        db.commit()
+    except Exception:
+        traceback.print_exc()
+        db.rollback()
 
 def getTextByTag(tree, tagName):
     tagObj = tree.find("%s%s" % (xmlns, tagName))
@@ -62,7 +74,6 @@ def getTextByTag(tree, tagName):
     else:
         return tagObj.text
 
-@dbOpenClose
 def handleOrderReceipt(tree):
     print("开始处理订单回执")
     orderNo = getTextByTag(tree, "orderNo")
@@ -75,8 +86,7 @@ def handleOrderReceipt(tree):
     ''' % (orderNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -89,13 +99,12 @@ def handleOrderReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, orderNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handleLogisticsReceipt(tree):
     print("开始处理运单回执")
     logisticsNo = getTextByTag(tree, "logisticsNo")
@@ -108,8 +117,7 @@ def handleLogisticsReceipt(tree):
     ''' % (logisticsNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -122,13 +130,12 @@ def handleLogisticsReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, logisticsNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handlePaymentReceipt(tree):
     print("开始处理收款单回执")
     orderNo = getTextByTag(tree, "orderNo")
@@ -141,8 +148,7 @@ def handlePaymentReceipt(tree):
     ''' % (orderNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -155,13 +161,12 @@ def handlePaymentReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, orderNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handleInvtReceipt(tree):
     print("开始处理清单回执")
     orderNo = getTextByTag(tree, "orderNo")
@@ -174,8 +179,7 @@ def handleInvtReceipt(tree):
     ''' % (orderNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -188,13 +192,12 @@ def handleInvtReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, orderNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handleInvtCancelReceipt(tree):
     print("开始处理撤销清单回执")
     invtNo = getTextByTag(tree, "invtNo")
@@ -207,8 +210,7 @@ def handleInvtCancelReceipt(tree):
     ''' % (invtNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -221,13 +223,12 @@ def handleInvtCancelReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, invtNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handleWayBillReceipt(tree):
     print("开始处理清单总分单回执")
     billNo = getTextByTag(tree, "billNo")
@@ -240,8 +241,7 @@ def handleWayBillReceipt(tree):
     ''' % (billNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -254,13 +254,12 @@ def handleWayBillReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, billNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handleDepartureReceipt(tree):
     print("开始离境单回执")
     copNo = getTextByTag(tree, "copNo")
@@ -273,8 +272,7 @@ def handleDepartureReceipt(tree):
     ''' % (copNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -287,13 +285,12 @@ def handleDepartureReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, copNo)
         if result[2] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[2], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
-@dbOpenClose
 def handleSummaryReceipt(tree):
     print("开始处理汇总单回执")
     copNo = getTextByTag(tree, "copNo")
@@ -306,8 +303,7 @@ def handleSummaryReceipt(tree):
     ''' % (copNo)
     print("开始执行：%s" % (sql))
 
-    cursor.execute(sql)
-    result = cursor.fetchone()
+    result = fetchOne(sql)
 
     print(result)
     if not result is None:
@@ -320,11 +316,11 @@ def handleSummaryReceipt(tree):
         ''' % (returnStatus, returnStatus, returnTime, returnInfo, copNo)
         if result[1] is None:
             print("开始执行：%s" % (sql))
-            cursor.execute(sql)
+            sqlModify(sql)
         else:
             if op.lt(result[1], returnTime):
                 print("开始执行：%s" % (sql))
-                cursor.execute(sql)
+                sqlModify(sql)
 
 def handle900Receipt(tree):
     print("开始处理xsd校验失败回执")
@@ -385,8 +381,8 @@ def worker():
     for parent,dirnames,filenames in os.walk(receiveDir):
        for filename in filenames:
            print("filename is: %s" % (os.path.join(parent, filename)))
-           # thread_pool.submit(parseXml, filename)
-           parseXml(filename)
+           thread_pool.submit(parseXml, filename)
+           # parseXml(filename)
     schedule.enter(delay, 0, worker)
 
 
