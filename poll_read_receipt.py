@@ -8,34 +8,45 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from dbutils.pooled_db import PooledDB
 
 schedule = sched.scheduler(time.time, time.sleep)
-delay = 3
-messageCount = 600
+delay = int(os.getenv('DELAY', '3'))
+messageCount = int(os.getenv('MESSAGE_COUNT', '2000'))
 # cache = queue.Queue(maxsize=2000)
-cache = Queue(maxsize=2000)
-receiveBackDir = r"/home/zhaopei/data/back"
-receiveDir = r"/home/zhaopei/data/send2"
+cache = Queue(maxsize=messageCount)
+receiveBackDir = os.getenv('RECEIVE_BAK_DIR', '/home/zhaopei/data/back')
+#receiveBackDir = "/home/zhaopei/data/back"
+receiveDir = os.getenv('RECEIVE_DIR', '/home/zhaopei/data/send2')
+#receiveDir = "/home/zhaopei/data/send2"
+host = os.getenv('HOST', '39.104.185.228')
+port = int(os.getenv('PORT', '33306'))
+user = os.getenv('USER', 'root')
+passord = os.getenv('PASSWORD', 'cargo@yuehai')
+databases = os.getenv('DATABASES', 'bills')
+maxconnections = int(os.getenv('MAX_CONNECTIONS', '8'))
+mincached = int(os.getenv('MIN_CACHED', '4'))
+maxcached = int(os.getenv('MAX_CACHED', '4'))
+
 xmlns = "{http://www.chinaport.gov.cn/ceb}"
 pool = PooledDB(
 creator=pymysql, # 使用链接数据库的模块
-maxconnections=8, # 连接池允许的最大连接数，0和None表示不限制连接数
-mincached=4, # 初始化时，链接池中至少创建的空闲的链接，0表示不创建
-maxcached=2, # 链接池中最多闲置的链接，0和None不限制
+maxconnections=maxconnections, # 连接池允许的最大连接数，0和None表示不限制连接数
+mincached=mincached, # 初始化时，链接池中至少创建的空闲的链接，0表示不创建
+maxcached=maxcached, # 链接池中最多闲置的链接，0和None不限制
 maxshared=0, # 链接池中最多共享的链接数量，0和None表示全部共享。PS: 无用，因为pymysql和MySQLdb等模块的 threadsafety都为1，所有值无论设置为多少，_maxcached永远为0，所以永远是所有链接都共享。
 blocking=True, # 连接池中如果没有可用连接后，是否阻塞等待。True，等待；False，不等待然后报错
 maxusage=None, # 一个链接最多被重复使用的次数，None表示无限制
 setsession=[], # 开始会话前执行的命令列表。如：[“set datestyle to …”, “set time zone …”]
-ping=0,
+ping=1,
 # ping MySQL服务端，检查是否服务可用。
 # 如：0 = None = never,
 # 1 = default = whenever it is requested,
 # 2 = when a cursor is created,
 # 4 = when a query is executed,
 # 7 = always
-host='39.104.185.228',
-port=33306,
-user='root',
-password='cargo@yuehai',
-database='bills',
+host=host,
+port=port,
+user=user,
+password=passord,
+database=databases,
 charset='utf8'
 )
 
@@ -448,9 +459,8 @@ def parseXml(fileName):
     try:
         tree = ET.parse(os.path.join(receiveDir, fileName))
         root = tree.getroot()
-        # handleReceipt(root)
-        # thread_pool.submit(handleReceipt, root)
         cache.put(root)
+        # handleReceipt(root)
         # thread_pool.submit(handleReceipt)
         process_pool.submit(handleReceipt)
     except Exception:
@@ -466,14 +476,12 @@ def parseXml(fileName):
 
 def worker():
     print(get_log_prefix(), "worker time is : [%s]" % (time.strftime("%Y-%m-%d %H:%M:%S")))
-    c = 0
     for parent,dirnames,filenames in os.walk(receiveDir):
        for filename in filenames:
            print(get_log_prefix(), "filename is: %s" % (os.path.join(parent, filename)))
-           parseXml(filename)
-           c += 1
-           if c >= messageCount:
+           if cache.full():
                break
+           parseXml(filename)
     schedule.enter(delay, 0, worker)
 
 def get_log_prefix():
